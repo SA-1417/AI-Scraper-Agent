@@ -44,8 +44,8 @@ Universal Web Scraper is a powerful, user-friendly web scraping application that
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/universal-web-scraper.git
-   cd universal-web-scraper
+   git clone https://github.com/SA-1417/AI-Scraper-Agent.git
+   cd AI-Scraper-Agent
    ```
 
 2. **Create a virtual environment**
@@ -72,6 +72,30 @@ Universal Web Scraper is a powerful, user-friendly web scraping application that
    playwright install
    ```
 
+### Environment Configuration
+
+1. **Create a `.env` file** in the root directory of the project
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Configure your API keys** in the `.env` file:
+   ```
+   # API Keys for LLM Models
+   OPENAI_API_KEY=your_openai_api_key_here
+   GEMINI_API_KEY=your_gemini_api_key_here
+   GROQ_API_KEY=your_groq_api_key_here
+   DEEPSEEK_API_KEY=your_deepseek_api_key_here
+
+   # Supabase Configuration
+   SUPABASE_URL=your_supabase_url_here
+   SUPABASE_ANON_KEY=your_supabase_anon_key_here
+   SUPABASE_PASSWORD=your_supabase_password_here
+   SUPABASE_SERVICE_KEY=your_supabase_service_key_here
+   ```
+
+3. **Important**: Never commit your actual API keys to version control. The `.env` file is included in `.gitignore` to prevent accidental commits.
+
 ### Supabase Setup
 
 1. **[Create a free Supabase account](https://supabase.com/)**
@@ -91,11 +115,7 @@ Universal Web Scraper is a powerful, user-friendly web scraping application that
 4. **Go to Project Settings → API** and copy:
    - **Supabase URL**
    - **Anon Key**
-5. **Update your `.env` file** with these values:
-   ```
-   SUPABASE_URL=your_supabase_url_here
-   SUPABASE_ANON_KEY=your_supabase_anon_key_here
-   ```
+5. **Update your `.env` file** with these values
 
 ### Running the Application
 
