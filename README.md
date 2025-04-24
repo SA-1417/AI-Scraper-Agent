@@ -45,10 +45,10 @@ pip install -r requirements.txt
         6. **Restart the project** and you’re good to go! 🚀
 
 
-## 5. run "playwright install"
+## 5. Run "playwright install"
 
-## 6. add your api keys in .env files for the models (you can also add them in the app)
+## 6. Add your api keys in .env files for the models (you can also add them in the app)
 
-## 7. type the command "streamlit run streamlit_app.py" in your project terminal
+## 7. Type the command "streamlit run streamlit_app.py" in your project terminal
 
 ## 8. Enjoy the working app
