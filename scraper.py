@@ -1,19 +1,83 @@
 # scraper.py
 
 import json
-from typing import List
+from typing import List, Dict
 from pydantic import BaseModel, create_model
-from assets import (OPENAI_MODEL_FULLNAME,GEMINI_MODEL_FULLNAME,SYSTEM_MESSAGE)
+from assets import (OPENAI_MODEL_FULLNAME,GEMINI_MODEL_FULLNAME)
 from llm_calls import (call_llm_model)
 from markdown import read_raw_data
 from api_management import get_supabase_client
 from utils import  generate_unique_name
 from datetime import datetime
+from playwright.sync_api import sync_playwright
+import time
 
 supabase = get_supabase_client()
 
+SYSTEM_MESSAGE = """You are a web scraping assistant specialized in extracting information from venture capital and investment firm websites. Extract the following information from the provided HTML content:
+
+1. company_location: The physical location(s) of the company/firm
+2. company_overview: A summary of the company's mission, history, and approach
+3. investment_criteria: The specific criteria they use when evaluating investment opportunities
+4. investment_strategy: Their overall investment approach, focus areas, and methodology
+5. portfolio_companies: List of companies they have invested in
+6. team_leadership: An array of team members, where each member MUST have these exact fields:
+   {
+     "name": "Full name of the person",
+     "role": "Their position/title",
+     "bio": "Their biographical information"
+   }
+
+For team_leadership, ensure each team member entry is structured exactly as shown above.
+If any field's information is not found, return an empty string for that field.
+For team_leadership, if no team members are found, return an empty array.
+
+Example of expected team_leadership format:
+"team_leadership": [
+    {
+        "name": "John Smith",
+        "role": "Managing Partner",
+        "bio": "John has 20 years of experience..."
+    },
+    {
+        "name": "Jane Doe",
+        "role": "Investment Director",
+        "bio": "Jane leads our healthcare investments..."
+    }
+]
+
+Ensure the response is properly formatted JSON matching the provided schema."""
+
+def get_page_content(url: str) -> str:
+    """Get the HTML content of a page using Playwright."""
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        try:
+            page.goto(url, wait_until="networkidle", timeout=30000)
+            # Wait a bit for any dynamic content to load
+            time.sleep(2)
+            content = page.content()
+            browser.close()
+            return content
+        except Exception as e:
+            browser.close()
+            raise Exception(f"Failed to fetch page content: {str(e)}")
+
 def create_dynamic_listing_model(field_names: List[str]):
-    field_definitions = {field: (str, ...) for field in field_names}
+    """Create a Pydantic model for the fields we want to extract."""
+    field_definitions = {}
+    for field in field_names:
+        if field == "team/leadership":
+            # Create a nested model for team members
+            TeamMember = create_model('TeamMember', 
+                name=(str, ""),
+                role=(str, ""),
+                bio=(str, "")
+            )
+            field_definitions["team_leadership"] = (List[TeamMember], [])
+        else:
+            field_definitions[field.replace(" ", "_").replace("/", "_")] = (str, "")
     return create_model('DynamicListingModel', **field_definitions)
 
 def create_listings_container_model(listing_model: BaseModel):
@@ -74,39 +138,48 @@ def save_raw_data(unique_name: str, url: str, raw_data: str) -> None:
         "success": len(raw_data) > 0
     }, on_conflict="unique_name").execute()
 
-def scrape_urls(unique_names: List[str], fields: List[str], selected_model: str):
+def scrape_urls(urls: List[str], fields: List[str], model: str = "gpt-4o-mini") -> tuple:
     """
-    For each unique_name:
-      1) read raw_data from supabase
-      2) parse with selected LLM
-      3) save formatted_data
-      4) accumulate cost
-    Return total usage + list of final parsed data
+    Scrape the specified URLs and extract the requested fields.
+    Returns a tuple of (results, token_counts, cost)
     """
+    DynamicListingModel = create_dynamic_listing_model(fields)
+    
+    results = {}
     total_input_tokens = 0
     total_output_tokens = 0
     total_cost = 0
-    parsed_results = []
-
-    DynamicListingModel = create_dynamic_listing_model(fields)
-    DynamicListingsContainer = create_listings_container_model(DynamicListingModel)
-
-    for uniq in unique_names:
-        raw_data = read_raw_data(uniq)
-        if not raw_data:
-            BLUE = "\033[34m"
-            RESET = "\033[0m"
-            print(f"{BLUE}No raw_data found for {uniq}, skipping.{RESET}")
-            continue
-
-        parsed, token_counts, cost = call_llm_model(raw_data, DynamicListingsContainer, selected_model, SYSTEM_MESSAGE)
-
-        # store
-        save_formatted_data(uniq, parsed)
-
-        total_input_tokens += token_counts["input_tokens"]
-        total_output_tokens += token_counts["output_tokens"]
-        total_cost += cost
-        parsed_results.append({"unique_name": uniq,"parsed_data": parsed})
-
-    return total_input_tokens, total_output_tokens, total_cost, parsed_results
+    
+    for url in urls:
+        try:
+            # Get the page content
+            content = get_page_content(url)
+            
+            # Create the schema for the LLM
+            parsed_data, token_counts, cost = call_llm_model(
+                content, 
+                DynamicListingModel, 
+                model, 
+                SYSTEM_MESSAGE
+            )
+            
+            # Update totals
+            total_input_tokens += token_counts["input_tokens"]
+            total_output_tokens += token_counts["output_tokens"]
+            total_cost += cost
+            
+            # Convert Pydantic model to dict if necessary
+            if hasattr(parsed_data, 'dict'):
+                parsed_data = parsed_data.dict()
+            
+            results[url] = parsed_data
+            
+        except Exception as e:
+            results[url] = {"error": str(e)}
+    
+    token_counts = {
+        "input_tokens": total_input_tokens,
+        "output_tokens": total_output_tokens
+    }
+    
+    return results, token_counts, total_cost

@@ -3,25 +3,28 @@ This module contains configuration variables and constants
 that are used across different parts of the application.
 """
 
-
-GEMINI_MODEL_FULLNAME="gemini/gemini-1.5-flash"
-OPENAI_MODEL_FULLNAME="gpt-4o-mini"
-DEEPSEEK_MODEL_FULLNAME ="groq/deepseek-r1-distill-llama-70b"
+OPENAI_MODEL_FULLNAME = "gpt-4o-mini"
 MODELS_USED = {
     OPENAI_MODEL_FULLNAME: {"OPENAI_API_KEY"},
-    GEMINI_MODEL_FULLNAME: {"GEMINI_API_KEY"},
-    DEEPSEEK_MODEL_FULLNAME : {"GROQ_API_KEY"},
 }
+
 # Timeout settings for web scraping
 TIMEOUT_SETTINGS = {
     "page_load": 30,
     "script": 10
 }
 
+USER_MESSAGE = "Extract the following information from the provided HTML content:"
+
+GEMINI_MODEL_FULLNAME="gemini/gemini-1.5-flash"
+DEEPSEEK_MODEL_FULLNAME ="groq/deepseek-r1-distill-llama-70b"
+MODELS_USED = {
+    OPENAI_MODEL_FULLNAME: {"OPENAI_API_KEY"},
+    GEMINI_MODEL_FULLNAME: {"GEMINI_API_KEY"},
+    DEEPSEEK_MODEL_FULLNAME : {"GROQ_API_KEY"},
+}
+
 NUMBER_SCROLL=2
-
-
-
 
 SYSTEM_MESSAGE = """You are an intelligent text extraction and conversion assistant. Your task is to extract structured information 
                         from the given text and convert it into a pure JSON format. The JSON should contain only the structured data extracted from the text, 
@@ -31,10 +34,6 @@ SYSTEM_MESSAGE = """You are an intelligent text extraction and conversion assist
 
 USER_MESSAGE = f"Extract the following information from the provided text:\nPage content:\n\n"
         
-
-
-
-
 PROMPT_PAGINATION = """
 You are an assistant that extracts pagination URLs from markdown content of websites. 
 Your task is to identify and generate a list of pagination URLs based on a detected URL pattern where page numbers increment sequentially. Follow these instructions carefully:
