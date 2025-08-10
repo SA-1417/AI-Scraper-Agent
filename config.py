@@ -16,10 +16,11 @@ API_KEYS = {
 
 # Scraping Configuration
 SCRAPING_CONFIG = {
-    "timeout": 40000,  # milliseconds
+    "timeout": 60000,  # milliseconds - increased for slow sites
     "max_retries": 3,
     "concurrent_limit": 5,
     "wait_time": 2,  # seconds between requests
+    "content_max_chars": 100000,  # max chars to prevent context window errors
 }
 
 # Fields to extract from each page

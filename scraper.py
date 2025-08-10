@@ -11,6 +11,7 @@ from utils import  generate_unique_name
 from datetime import datetime
 from playwright.sync_api import sync_playwright
 import time
+import html2text
 
 supabase = get_supabase_client()
 
@@ -48,21 +49,36 @@ Example of expected team_leadership format:
 
 Ensure the response is properly formatted JSON matching the provided schema."""
 
-def get_page_content(url: str) -> str:
-    """Get the HTML content of a page using Playwright."""
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        try:
-            page.goto(url, wait_until="networkidle", timeout=30000)
-            # Wait a bit for any dynamic content to load
-            time.sleep(2)
-            content = page.content()
-            browser.close()
-            return content
-        except Exception as e:
-            browser.close()
-            raise Exception(f"Failed to fetch page content: {str(e)}")
+def get_page_content(url: str, max_retries: int = 3) -> str:
+    """Get the HTML content of a page using Playwright with retry logic."""
+    for attempt in range(max_retries):
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            try:
+                # Try different wait strategies based on attempt
+                if attempt == 0:
+                    # First attempt: wait for networkidle
+                    page.goto(url, wait_until="networkidle", timeout=30000)
+                elif attempt == 1:
+                    # Second attempt: wait for domcontentloaded (faster)
+                    page.goto(url, wait_until="domcontentloaded", timeout=45000)
+                else:
+                    # Final attempt: just wait for load event
+                    page.goto(url, wait_until="load", timeout=60000)
+                
+                # Wait for dynamic content
+                time.sleep(2)
+                content = page.content()
+                browser.close()
+                return content
+                
+            except Exception as e:
+                browser.close()
+                if attempt == max_retries - 1:
+                    raise Exception(f"Failed to fetch page content after {max_retries} attempts: {str(e)}")
+                # Wait before retry
+                time.sleep(2 ** attempt)  # Exponential backoff
 
 def create_dynamic_listing_model(field_names: List[str]):
     """Create a Pydantic model for the fields we want to extract."""
@@ -138,6 +154,34 @@ def save_raw_data(unique_name: str, url: str, raw_data: str) -> None:
         "success": len(raw_data) > 0
     }, on_conflict="unique_name").execute()
 
+def truncate_content(content: str, max_chars: int = 100000) -> str:
+    """Truncate HTML content to fit within context window limits."""
+    if len(content) <= max_chars:
+        return content
+    
+    # Convert HTML to clean text first
+    h = html2text.HTML2Text()
+    h.ignore_links = True
+    h.ignore_images = True
+    text_content = h.handle(content)
+    
+    # If still too long, truncate intelligently
+    if len(text_content) > max_chars:
+        # Try to keep the most relevant parts
+        lines = text_content.split('\n')
+        truncated_lines = []
+        char_count = 0
+        
+        for line in lines:
+            if char_count + len(line) > max_chars:
+                break
+            truncated_lines.append(line)
+            char_count += len(line) + 1
+        
+        return '\n'.join(truncated_lines)
+    
+    return text_content
+
 def scrape_urls(urls: List[str], fields: List[str], model: str = "gpt-4o-mini") -> tuple:
     """
     Scrape the specified URLs and extract the requested fields.
@@ -152,12 +196,15 @@ def scrape_urls(urls: List[str], fields: List[str], model: str = "gpt-4o-mini") 
     
     for url in urls:
         try:
-            # Get the page content
+            # Get the page content with retry logic
             content = get_page_content(url)
+            
+            # Truncate content to prevent context window errors
+            truncated_content = truncate_content(content)
             
             # Create the schema for the LLM
             parsed_data, token_counts, cost = call_llm_model(
-                content, 
+                truncated_content, 
                 DynamicListingModel, 
                 model, 
                 SYSTEM_MESSAGE
