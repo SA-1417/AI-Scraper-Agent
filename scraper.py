@@ -19,15 +19,29 @@ SYSTEM_MESSAGE = """You are a web scraping assistant specialized in extracting i
 
 1. company_location: The physical location(s) of the company/firm
 2. company_overview: A summary of the company's mission, history, and approach
-3. investment_criteria: The specific criteria they use when evaluating investment opportunities
+3. investment_criteria: The COMPLETE investment criteria - capture ALL details, requirements, and specifications
 4. investment_strategy: Their overall investment approach, focus areas, and methodology
 5. portfolio_companies: List of companies they have invested in
 6. team_leadership: An array of team members, where each member MUST have these exact fields:
    {
      "name": "Full name of the person",
      "role": "Their position/title",
-     "bio": "Their biographical information"
+     "bio": "Their COMPLETE biographical information - capture ALL paragraphs and details"
    }
+
+IMPORTANT for investment_criteria:
+- Capture the ENTIRE investment criteria section, including ALL bullet points, lists, and details
+- Do NOT truncate or summarize the criteria
+- Include ALL requirements such as: industry focus, stage preferences, geography, check sizes, revenue requirements, growth metrics, etc.
+- If criteria has multiple paragraphs or sections, include ALL of them
+- Include any specific metrics, thresholds, or requirements mentioned
+
+IMPORTANT for team_leadership bios:
+- Capture the ENTIRE bio for each person, including ALL paragraphs
+- Do NOT truncate or summarize the bio content
+- Include ALL professional history, education, achievements, board positions, etc.
+- If a bio has multiple paragraphs, include ALL of them
+- The bio should be the complete text as it appears on the page
 
 For team_leadership, ensure each team member entry is structured exactly as shown above.
 If any field's information is not found, return an empty string for that field.
@@ -38,12 +52,7 @@ Example of expected team_leadership format:
     {
         "name": "John Smith",
         "role": "Managing Partner",
-        "bio": "John has 20 years of experience..."
-    },
-    {
-        "name": "Jane Doe",
-        "role": "Investment Director",
-        "bio": "Jane leads our healthcare investments..."
+        "bio": "John has 20 years of experience in venture capital. Prior to founding XYZ Capital, he was a partner at ABC Ventures where he led investments in... He serves on the boards of... John graduated from Harvard Business School..."
     }
 ]
 
