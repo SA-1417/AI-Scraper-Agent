@@ -22,7 +22,7 @@ SYSTEM_MESSAGE = """You are a web scraping assistant specialized in extracting i
 3. investment_criteria: The COMPLETE investment criteria - capture ALL details, requirements, and specifications
 4. investment_strategy: Their overall investment approach, focus areas, and methodology
 5. portfolio_companies: List of companies they have invested in
-6. team_leadership: An array of team members, where each member MUST have these exact fields:
+6. team_leadership: An array of ALL team members (including all levels: partners, principals, VPs, associates, analysts, and support staff), where each member MUST have these exact fields:
    {
      "name": "Full name of the person",
      "role": "Their position/title",
