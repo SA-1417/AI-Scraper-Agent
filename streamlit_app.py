@@ -111,6 +111,9 @@ try:
                     # Insert into scraped_data2 table
                     supabase.table("scraped_data2").insert(insert_data).execute()
                     
+                    # Update the scraped column to true in subpages table
+                    supabase.table("subpages").update({"scraped": True}).eq("id", subpage_id).execute()
+                    
                     st.success(f"Successfully scraped and stored data for URL {url}")
                     
                 except Exception as e:
